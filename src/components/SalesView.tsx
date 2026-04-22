@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download, Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { mockSales, type Sale } from '@/data/ecommerce_data';
 
@@ -23,6 +23,8 @@ export function SalesView() {
     const [sortField, setSortField] = useState<keyof Sale>('order_date');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     const [filterCategory, setFilterCategory] = useState('');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState<number | 'all'>(25);
 
     const categories = [...new Set(mockSales.map((s) => s.product_category))];
 
@@ -43,6 +45,19 @@ export function SalesView() {
             }
             return aVal < bVal ? 1 : -1;
         });
+
+    const sortedSales = [...filteredSales];
+
+    const paginatedSales =
+        pageSize === 'all'
+            ? sortedSales
+            : sortedSales.slice((page - 1) * pageSize, page * pageSize);
+
+    const totalPages = pageSize === 'all' ? 1 : Math.ceil(sortedSales.length / pageSize);
+
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm, filterCategory, sortField, sortDirection]);
 
     const handleSort = (field: keyof Sale) => {
         if (sortField === field) {
@@ -203,7 +218,7 @@ export function SalesView() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-200">
-                                {filteredSales.map((sale) => (
+                                {paginatedSales.map((sale) => (
                                     <tr key={sale.order_id} className="hover:bg-zinc-50">
                                         <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-zinc-900">
                                             {sale.order_id}
@@ -254,13 +269,50 @@ export function SalesView() {
                             </tbody>
                         </table>
                     </div>
-
-                    <div className="border-t border-zinc-200 px-4 py-3 bg-zinc-50">
-                        <p className="text-sm text-zinc-600">
-                            Affichage de <span className="font-medium">{filteredSales.length}</span>{' '}
+                    <div className="flex items-center justify-between border-t border-zinc-200 bg-zinc-50 px-4 py-3">
+                        {/* Page size selector */}
+                        <div className="flex items-center gap-2 text-sm text-zinc-600">
+                            <span>Afficher</span>
+                            <select
+                                value={pageSize}
+                                onChange={(e) =>
+                                    setPageSize(
+                                        e.target.value === 'all' ? 'all' : Number(e.target.value),
+                                    )
+                                }
+                                className="border border-zinc-200 bg-white px-2 py-1 text-sm"
+                            >
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                                <option value="all">Tout</option>
+                            </select>
                             commandes sur <span className="font-medium">{mockSales.length}</span> au
                             total
-                        </p>
+                        </div>
+
+                        {/* Pagination controls */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                disabled={page === 1 || pageSize === 'all'}
+                                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                                className="px-3 py-1 text-sm border border-zinc-200 disabled:opacity-50"
+                            >
+                                Précédent
+                            </button>
+
+                            <span className="text-sm text-zinc-600">
+                                Page {page} / {totalPages}
+                            </span>
+
+                            <button
+                                disabled={page === totalPages || pageSize === 'all'}
+                                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                                className="px-3 py-1 text-sm border border-zinc-200 disabled:opacity-50"
+                            >
+                                Suivant
+                            </button>
+                        </div>
                     </div>
                 </div>
 
