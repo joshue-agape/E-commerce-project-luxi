@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Download, Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { mockSales, type Sale } from '@/data/ecommerce_data';
 
@@ -26,46 +26,47 @@ export function SalesView() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState<number | 'all'>(25);
 
-    const categories = [...new Set(mockSales.map((s) => s.product_category))];
+    const categories = useMemo(() => [...new Set(mockSales.map((s) => s.product_category))], []);
 
-    const filteredSales = mockSales
-        .filter((sale) => {
-            const matchesSearch =
-                sale.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                sale.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                sale.product_name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = !filterCategory || sale.product_category === filterCategory;
-            return matchesSearch && matchesCategory;
-        })
-        .sort((a, b) => {
-            const aVal = a[sortField];
-            const bVal = b[sortField];
-            if (sortDirection === 'asc') {
-                return aVal > bVal ? 1 : -1;
-            }
-            return aVal < bVal ? 1 : -1;
-        });
+    const resetPage = () => setPage(1);
 
-    const sortedSales = [...filteredSales];
+    const filteredSales = useMemo(() => {
+        return mockSales
+            .filter((sale) => {
+                const matchesSearch =
+                    sale.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    sale.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    sale.product_name.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const paginatedSales =
-        pageSize === 'all'
-            ? sortedSales
-            : sortedSales.slice((page - 1) * pageSize, page * pageSize);
+                const matchesCategory = !filterCategory || sale.product_category === filterCategory;
 
-    const totalPages = pageSize === 'all' ? 1 : Math.ceil(sortedSales.length / pageSize);
+                return matchesSearch && matchesCategory;
+            })
+            .sort((a, b) => {
+                const aVal = a[sortField];
+                const bVal = b[sortField];
 
-    useEffect(() => {
-        setPage(1);
+                if (sortDirection === 'asc') return aVal > bVal ? 1 : -1;
+                return aVal < bVal ? 1 : -1;
+            });
     }, [searchTerm, filterCategory, sortField, sortDirection]);
+
+    const paginatedSales = useMemo(() => {
+        if (pageSize === 'all') return filteredSales;
+
+        return filteredSales.slice((page - 1) * pageSize, page * pageSize);
+    }, [filteredSales, page, pageSize]);
+
+    const totalPages = pageSize === 'all' ? 1 : Math.ceil(filteredSales.length / pageSize);
 
     const handleSort = (field: keyof Sale) => {
         if (sortField === field) {
-            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+            setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
         } else {
             setSortField(field);
             setSortDirection('desc');
         }
+        resetPage();
     };
 
     return (
